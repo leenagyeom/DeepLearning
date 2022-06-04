@@ -15,18 +15,20 @@ y_train = torch.FloatTensor([[152], [185], [180], [196], [142]])
 model = nn.Linear(3, 1)
 
 # optimizer 설정
-optimizer = torch.optim.SGD(model.parameters(), lr=1e-5)
+optimizer = torch.optim.SGD(model.parameters(), lr=0.000005)
 nb_epoch = 2000
 for epoch in range(nb_epoch+1):
     output = model(x_train)
 
-    loss = F.mse_loss(output, y_train)
+    loss = F.mse_loss(output, y_train)  # input tensor, target tensor
+
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
 
+    # 출력
     if epoch % 100 == 0:
-        print('Epoch : {:4d}/{} loss : {:.6f}'.format(epoch, nb_epoch, loss.item()))
+       print('Epoch : {:4d}/{} loss : {:.6f}'.format(epoch, nb_epoch, loss.item()))
 
 new_val = torch.FloatTensor([[73, 80, 75]])
 pred_y = model(new_val)
