@@ -45,8 +45,5 @@ optimizer = optim.SGD(net.parameters(), lr=configer.lr, momentum=0.9)
 lr_schedule = torch.optim.lr_scheduler.StepLR(optimizer, step_size=4, gamma = 0.1)
 
 
-# 과제 : train loop 구성해서 학습돌리고 학습 결과를 프린트
 ### 6. train loop function call
-
-
-### 7. test loop function call
+utils_file.train(configer.num_epochs, net, train_loader, test_loader, criterion, optimizer, configer.save_weights_dir, configer.val_every, device)

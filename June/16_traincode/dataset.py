@@ -21,7 +21,6 @@ class CustomDataset(Dataset):
         data_label = data_path.split('\\')[-2]
 
         # 라벨만들기
-
         label = 0
         if "Downdog" == data_label:
             label = 0
