@@ -15,6 +15,7 @@ configer.py     Hyper Parameter 값 셋팅 (epoch, lr, momentum, gamma 등)
 
 device = configer.device
 
+
 ### 1. augmentation setting
 data_transform = utils_file.data_augmentation()
 
@@ -30,7 +31,8 @@ dataset_sizes = {x : len(datasets[x]) for x in ['train', 'test']}
 
 
 ### 4. model call
-net, image_size = models_build.initialize_model("resnet18", num_classes=configer.nc)
+modelname = "resnet34"
+net, image_size = models_build.initialize_model(modelname, num_classes=configer.nc)
 net = net.to(device)
 
 
@@ -42,8 +44,8 @@ lr_schedule = torch.optim.lr_scheduler.StepLR(optimizer, step_size=4, gamma = 0.
 
 ### 6. train loop function call
 model_ft, p_data = utils_file.train_model(net, criterion, optimizer,  dataloders, dataset_sizes, lr_schedule, configer.num_epochs)
-utils_file.save_model(model_ft)
-utils_file.loss_acc_visualize(p_data)
-utils_file.visual_predict(model_ft, datasets['test'])
+utils_file.save_model(model_ft, modelname)
+utils_file.loss_acc_visualize(p_data, modelname)
+utils_file.visual_predict(model_ft, modelname, datasets['test'])
 
 ### 7. test loop function call

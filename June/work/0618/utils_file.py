@@ -23,15 +23,15 @@ def data_augmentation() : # 데이터 증가
     data_transforms = {
         'train': transforms.Compose([
             transforms.Resize((224, 224)),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomVerticalFlip(),
+            transforms.RandomHorizontalFlip(p=0.2),
+            transforms.RandomVerticalFlip(p=0.2),
             transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            transforms.Normalize([0.5, 0.5, 0.5], [0.2, 0.2, 0.2])
         ]),
         'test': transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            transforms.Normalize([0.5, 0.5, 0.5], [0.2, 0.2, 0.2])
         ])
     }
 
@@ -114,8 +114,8 @@ def train_model(model, criterion, optimizer, dataloaders, dataset_sizes, schedul
     return model, pd_data
 
 
-def save_model(model, save_dir=configer.save_model_dir, file_name="best.pt"):
-    output_path = os.path.join(save_dir, file_name)
+def save_model(model, file_name, save_dir=configer.save_model_dir):
+    output_path = os.path.join(save_dir, f"best_{file_name}.pt")
     torch.save(model.state_dict(), output_path)
 
 
@@ -141,7 +141,7 @@ def eval(model, test_loader, device):
 
 
 
-def loss_acc_visualize(history, path=configer.result_path):
+def loss_acc_visualize(history, modelname, path=configer.result_path):
     plt.figure(figsize=(20, 10))
 
     plt.suptitle(f"SGD; {configer.lr}")
@@ -158,10 +158,10 @@ def loss_acc_visualize(history, path=configer.result_path):
     plt.legend()
     plt.title('Accuracy Curves')
 
-    plt.savefig(os.path.join(str(path),'loss_acc.png'))
+    plt.savefig(os.path.join(str(path),f'loss_acc_{modelname}.png'))
 
 
-def visual_predict(model, data, path=configer.result_path):
+def visual_predict(model, modelname, data, path=configer.result_path):
     c = np.random.randint(0, len(data))
     img, _, label, category = data[c]
 
@@ -178,4 +178,4 @@ def visual_predict(model, data, path=configer.result_path):
     plt.subplot(122)
     plt.barh(category, out.cpu().numpy()[0])
 
-    plt.savefig(os.path.join(str(path),'predict.png'))
+    plt.savefig(os.path.join(str(path),f'predict_{modelname}.png'))
