@@ -10,15 +10,20 @@ import pathlib
 import torchvision.utils
 import pandas as pd
 import torch
-from tkinter.messagebox import NO
 from torch.utils.data import Dataset, DataLoader
+# from torch.utils.data.datapipes.iter import batch
 from torch.utils.data.sampler import Sampler
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MultiLabelBinarizer
 import PIL.Image
 import torchvision.transforms.functional as TF
+from ignite.engine import Events
+from ignite.engine import create_supervised_evaluator, create_supervised_trainer
+from ignite.metrics import Recall, Precision
+from ignite.metrics import Loss
+from torch import mode, optim, save
 
-
+device = "cuda" if torch.cuda.is_available() else "cpu"
 SEED_NUMBER = 7777
 LABEL_MAP = {
     0: "Nuclepolasm",
@@ -103,58 +108,103 @@ class MulitiBandMultiLabelDataset(Dataset):
     def _load_multiband_target(self, index):
         return list(map(int, self.images_df.iloc[index].Target.split(' ')))
 
-    # def collate_func(self, batch):
-    #     images = [x[0] for x in batch]
-    #     labels = [x[1] for x in batch]
+    def collate_fn(self, batch):
+        images = [x[0] for x in batch]
+        labels = [x[1] for x in batch]
 
-    #     labels_one_hot = self.mlb.fit_transform(labels)
+        labels_one_hot = self.mlb.fit_transform(labels)
 
-    #     return torch.stack(images), torch.FloatTensor(labels_one_hot)
+        return torch.stack(images), torch.FloatTensor(labels_one_hot)
 
 
 df = pd.read_csv("./data/train.csv")
 df_train, df_val = train_test_split(df, test_size=.2, random_state=SEED_NUMBER)
 train_data = MulitiBandMultiLabelDataset(df_train, base_path="./data/train", image_transform=image_transform)
+test_data = MulitiBandMultiLabelDataset(df_val, base_path="./data/test", image_transform=image_transform)
 
-for i in train_data:
-    print(i)
-    exit()
+# for i in range(1):
+#     sample, _ = train_data[0]
+#
+# plt.figure(figsize=(10, 10))
+# plt.imshow(transforms.ToPILImage()(sample))
+# plt.show()
+#
+# exit()
 
 
-for i in range(1):
-    sample, _ = train_data[0]
+train_load = DataLoader(train_data, collate_fn = train_data.collate_fn, batch_size=16, num_workers=6)
+test_load = DataLoader(test_data, collate_fn = test_data.collate_fn, batch_size=16, num_workers=6)
 
-plt.figure(figsize=(10, 10))
-plt.imshow(transforms.ToPILImage()(sample))
-plt.show()
+def get_model(n_classes, image_channels = 4):
+    model = resnet18(pretrained=True) # 제대로 된 feature 추출이 되지 않고, 빠르게 학습하기 위해 pretrained 사용
+    for p in model.parameters():
+        p.requires_grad = True
+    inft = model.fc.in_features
+    model.fc = nn.Linear(in_features=inft, out_features=n_classes)
+    model.conv1 = nn.Conv2d(image_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
+    # model.avgpool = nn.AdaptiveAvgPool2d(1)
+    return model
 
-exit()
+def train(trainer, train_loader, test_loader, checkpoint_path = "bestmodel_{}_{}.torch", epochs=1):
+    @trainer.on(Events.ITERATION_COMPLETED)
+    def log_training_loss(engine):
+        iter = (engine.state.iteration-1) % len(train_loader) + 16
+        if iter % 10 == 0:
+            print("Epoch[{}] Iteration[{}/{}] Loss : {:.2f}".format(
+                engine.state.epoch, iter, len(train_loader), engine.state.output
+            ))
 
-image_channels = 4
-model = resnet18(pretrained=True)
-for p in model.parameters():
-    p.requires_grad = True
-inft = model.fc.in_features
-model.fc = nn.Linear(in_features=inft, out_features=28)
-model.avgpool = nn.AdaptiveAvgPool2d(1)
-model.conv1 = nn.Conv2d(image_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
+    def log_training_results(engine):
+        evaluate.run()
+        metrics = evaluate.state.metrics
+        avg_null = metrics["loss"]
+        print("Training results -> Epoch : {} Avg : loss {:.2f}".format(
+            engine.state.epoch, avg_null
+        ))
+        save(model, checkpoint_path.format(engine.state.epoch, avg_null))
+
+    trainer.run(train_loader, max_epochs=epochs)
+
 
 """평가"""
 # 함수 인자 값 : model, test_loader, threshold
-threshold = 0.2
-all_preds = []
-true = []
-model.eval()
-for b in test_loader:
-    x, y = b
-    if torch.cuda.is_available():
-        x, y = x.cuda(), y.cuda()
-    pred = model(x)
-    all_preds.append(pred.sigmoid().cpu().data.numpy())
-    true.append(y.cpu().data.numpy)
+def evaluate(model, test_loader, threshold = 0.2):
+    # f1 score는 낮을수록 좋다
+    all_preds = []
+    true = []
+    model.eval()
 
-p = np.concatenate(all_preds)
-R = np.concatenate(true)
+    for b in test_loader:
+        image, target = b
 
-f1 = f1_score(P > threshold, R, average="macro")
-print(f1)
+        if torch.cuda.is_available():
+            image, target = image.cuda(), target.cuda()
+
+        pred = model(image)
+        all_preds.append(pred.sigmoid().cpu().data.numpy())
+        true.append(target.cpu().data.numpy())
+
+    P = np.concatenate(all_preds)
+    R = np.concatenate(true)
+    f1 = f1_score(P > threshold, R, average='macro')
+
+    return f1
+
+""" Prepare model """
+model = get_model(28, 4)
+model = model.to(device)
+criterion = nn.BCEWithLogitsLoss()
+criterion = criterion.to(device)
+
+evaluator = create_supervised_evaluator(model, device = device, metrics={'loss': Loss(criterion)})
+optimizer = optim.Adam(filter(lambda p : p.requires_grad, model.parameters()), lr=0.00025)
+trainer = create_supervised_trainer(model, optimizer, criterion, device=device)
+
+
+if __name__ == '__main__':
+    # train
+    model = train(trainer, train_load, test_load, epochs=1)
+
+    # eval
+    res = evaluate(model, test_load, threshold = 0.2)
+    print("Eval F1 >", res)
