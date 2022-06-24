@@ -1,7 +1,6 @@
 import os
 import glob
 import numpy as np
-import cv2
 from sklearn.model_selection import train_test_split
 
 data_path = "../work/0623/DATASET/TRAIN"    # train 데이터만 불러서 split 한다.
@@ -44,7 +43,6 @@ for i in O_data_indices:
     O_data.append(path)
 
 all_data = R_data + O_data
-print(all_data)
 
 # train, valid 데이터로 사용하면 됨
 x_train, x_valid = train_test_split(all_data, test_size=0.2, random_state=777)
