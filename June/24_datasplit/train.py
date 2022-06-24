@@ -4,7 +4,7 @@ import torch
 import torchvision.transforms as transforms
 import torchvision.models as models
 import torch.nn as nn
-from torch import optim as optim
+import torch.optim as optim
 import numpy as np
 
 from PIL import Image
@@ -145,4 +145,11 @@ net = get_model(2)
 net = net.to(device)
 
 criterion = nn.CrossEntropyLoss().to(device)
-optimizer = optim.Adam(filter(lambda p:p.requires_grad, net.parameters()), lr=0.0005))
+optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=0.0005)
+lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=4, gamma=0.1)
+
+save_weights_dir = "./weights"
+os.makedirs(save_weights_dir, exist_ok=True)
+
+if __name__ == "__main__":
+    train(num_epoch, net, train_loader, valid_loader, criterion, optimizer, save_weights_dir, val_every, device)
