@@ -24,9 +24,9 @@ def image_transform():
     augmentation = {
         "train" : transforms.Compose([
             transforms.Resize((224, 224)),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomVerticalFlip(),
-            transforms.RandomAutocontrast(),
+            transforms.RandomHorizontalFlip(p=0.2),
+            transforms.RandomVerticalFlip(p=0.4),
+            transforms.RandomAutocontrast(1.5),
             transforms.ToTensor(),
             transforms.Normalize([0.5, 0.5, 0.5], [0.2, 0.2, 0.2])
         ]),
@@ -123,6 +123,6 @@ def eval(model, test_loader, device):
             total += imgs.size(0)
             correct += (labels == argmax).sum().item()
 
-        print("Test acc for image : {} ACC : {:.2f}".format(
+        print("Test acc for image : {}\nAccuracy : {:.2f}".format(
             total, correct / total * 100))
         print("End test.. ")

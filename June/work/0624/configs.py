@@ -8,11 +8,12 @@ import torch.nn as nn
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # hyper parameters
-batch_size = 16
+batch_size = 32
 nc = 2
-num_epoch = 10
+num_epoch = 50
 val_every = 1
-lr = 0.01
+lr = 0.0025
+momentum = 0.9
 criterion = nn.CrossEntropyLoss().to(device)
 
 # path

@@ -32,8 +32,14 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
         model_ft.fc = nn.Linear(num_ftrs, num_classes)
         input_size = 224
 
+    elif model_name == "resnext50_32x4d":
+        model_ft = models.resnext50_32x4d(pretrained=use_pretrained)
+        num_ftrs = model_ft.fc.in_features
+        model_ft.fc = nn.Linear(num_ftrs, num_classes)
+        input_size = 224
+
     elif model_name == "mobilenet":
-        model_ft = models.mobilenet_v2(pretrained=True)
+        model_ft = models.mobilenet_v2(pretrained=use_pretrained)
         num_ftrs = model_ft.last_channel
         model_ft.classifier[1] = nn.Linear(num_ftrs, num_classes)
         input_size = 224
@@ -45,12 +51,25 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
         model_ft.classifier[6] = nn.Linear(num_ftrs,num_classes)
         input_size = 224
 
-    elif model_name == "vgg":
+    elif model_name == "vgg11_bn":
         """ VGG11_bn"""
         model_ft = models.vgg11_bn(pretrained=use_pretrained)
         num_ftrs = model_ft.classifier[6].in_features
         model_ft.classifier[6] = nn.Linear(num_ftrs,num_classes)
         input_size = 224
+
+    elif model_name == "vgg16_bn":
+        model_ft = models.vgg16_bn(pretrained=use_pretrained)
+        num_ftrs = model_ft.classifier[6].in_features
+        model_ft.classifier[6] = nn.Linear(num_ftrs,num_classes)
+        input_size = 224
+
+    elif model_name == "vgg16":
+        model_ft = models.vgg16(pretrained=use_pretrained)
+        num_ftrs = model_ft.classifier[6].in_features
+        model_ft.classifier[6] = nn.Linear(num_ftrs,num_classes)
+        input_size = 224
+
 
     elif model_name == "squeezenet":
         """ Squeezenet"""
