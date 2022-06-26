@@ -5,6 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision.models as models
 import torchvision.transforms as transforms
 
+import cv2, shutil
 import glob
 import os
 from PIL import Image
@@ -31,18 +32,18 @@ def set_seed(seed = 7777):
 category = {"O" : 0, "R" : 1}
 class MyCustomDataset(Dataset):
     def __init__(self, path, mode, transform=None):
-        self.path = self.split_data(path, mode)
-        self.mode = mode
+        self.path = self.sample_data(path, mode)
         self.transform = transform
+        self.mode = mode
 
     def __getitem__(self, index):
         data = self.path[index]
-        # ./DATASET/TRAIN\O\O_1.jpg
+        # .TRAIN\O\O_1.jpg
         img = Image.open(data).convert("RGB")
 
         if self.transform is not None :
             img = self.transform(img)
-        label_temp = data.split('\\')[-2]
+        label_temp = data.split('/')[1].split('\\')[-1].split('_')[0]
         label = category[label_temp]
 
         return img, label
@@ -50,13 +51,32 @@ class MyCustomDataset(Dataset):
     def __len__(self):
         return len(self.path)
 
-    def split_data(self, path, mode):
-        O_data = sorted(glob.glob(os.path.join(path, mode, "O", "*.jpg")))
-        R_data = sorted(glob.glob(os.path.join(path, mode, "R", "*.jpg")))
-        t1_data, _, _, _ = train_test_split(O_data, O_data, test_size=0.9, random_state=100)
-        t2_data, _, _, _ = train_test_split(R_data, R_data, test_size=0.9, random_state=100)
-        data = t1_data + t2_data
+    def sample_data(self, path, mode):
+        if mode == "train":
+            path = sorted(glob.glob(os.path.join(path,"*.jpg")))
+            data_size = len(path)
+            data_num = int(data_size * 0.1)
+            data = path[:data_num]
+
+        elif mode == "test":
+            data = sorted(glob.glob(os.path.join(path,"*.jpg")))
+
         return data
+
+
+# def split_data_save(self, path, mode):
+    #     O_data = sorted(glob.glob(os.path.join(path, mode, "O", "*.jpg")))
+    #     R_data = sorted(glob.glob(os.path.join(path, mode, "R", "*.jpg")))
+    #     t1_data, _, _, _ = train_test_split(O_data, O_data, test_size=0.7, random_state=100)
+    #     t2_data, _, _, _ = train_test_split(R_data, R_data, test_size=0.7, random_state=100)
+    #     data = t1_data + t2_data
+    #     os.makedirs(f"./{mode}", exist_ok=True)
+    #     for i in data:
+    #         source = i
+    #         destination = f"./{mode}/"
+    #         shutil.copy(source, destination)
+    #
+    #     return data
 
 
 # transform - train, valid
@@ -75,10 +95,10 @@ test_transform = transforms.Compose([
     transforms.Normalize([0.5, 0.5, 0.5], [0.2, 0.2, 0.2])
 ])
 
-
-data_path = "./DATASET/"
-train_data = MyCustomDataset(data_path, "TRAIN", train_transform)
-test_data = MyCustomDataset(data_path, "TEST", test_transform)
+train_path = "./TRAIN/"
+test_path = "./TEST/"
+train_data = MyCustomDataset(train_path, "train", train_transform)
+test_data = MyCustomDataset(test_path, "test", test_transform)
 
 
 # dataloader
@@ -99,7 +119,7 @@ model = model.to(device)
 
 # hyper parameters
 criterion = nn.CrossEntropyLoss().to(device)
-optimizer = optim.SGD(model.parameters(), lr=0.0025, momentum=0.9)
+optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
 lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=4, gamma=0.1)
 
 num_epochs = 10
@@ -198,8 +218,8 @@ def eval(model, test_loader, device):
 
 
 """model load => model test"""
-model.load_state_dict(torch.load("./weight/best.pt"))
+# model.load_state_dict(torch.load("./weight/best.pt"))
 
 if __name__ == "__main__":
-    # train(num_epochs, model, train_loader, test_loader, criterion, optimizer, save_weights_dir, val_every, device)
-    eval(model, test_loader, device)
+    train(num_epochs, model, train_loader, test_loader, criterion, optimizer, save_weights_dir, val_every, device)
+    # eval(model, test_loader, device)
